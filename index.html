@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tracker Ristrutturazione — Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/shared.css">
+<link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-eyebrow">Gestione lavori</div>
+    <div class="header-title">Tracker Ristrutturazione</div>
+    <div class="header-subtitle">Recap generale · ditte, abitazioni e spese</div>
+  </div>
+  <nav class="topnav">
+    <a href="index.html">Home</a>
+    <a href="pages/spese.html">Spese &amp; Preventivi</a>
+    <a href="pages/anagrafiche.html">Anagrafiche</a>
+  </nav>
+</header>
+
+<main class="main">
+  <div id="migrationBanner"></div>
+  <div id="alertContainer"></div>
+
+  <div class="quick-nav">
+    <a class="quick-card" href="pages/spese.html">
+      <div class="quick-card-title">Spese &amp; Preventivi →</div>
+      <div class="quick-card-sub">Registra nuove spese, filtra ed esporta il PDF.</div>
+    </a>
+    <a class="quick-card" href="pages/anagrafiche.html">
+      <div class="quick-card-title">Anagrafiche →</div>
+      <div class="quick-card-sub">Gestisci ditte, immobili e categorie di spesa.</div>
+    </a>
+  </div>
+
+  <div class="summary-row" id="summaryRow"></div>
+  <div id="insightContainer"></div>
+
+  <div class="insight-section">
+    <div class="insight-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/></svg> Backup dati</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">
+      Ditte, abitazioni e spese sono salvate nel browser. Esporta un backup periodicamente, oppure importane uno per ripristinare o unire dati da un altro dispositivo.
+    </div>
+    <div class="backup-row">
+      <button class="btn" onclick="exportBackupJSON()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/></svg> Esporta backup (.json)</button>
+      <button class="btn" onclick="document.getElementById('importFile').click()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0 4 4m-4-4-4 4"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/></svg> Importa backup (.json)</button>
+      <input type="file" id="importFile" accept="application/json">
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/shared.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>
