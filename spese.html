@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tracker Ristrutturazione — Spese</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  /* select nativi per i filtri dinamici (abitazione/ditta/stato/date), stessa estetica dei bottoni toolbar */
+  .nsel, .toolbar input[type=date] {
+    height:42px; padding:0 32px 0 14px; border:1px solid var(--border-strong); border-radius:var(--radius-md);
+    background:var(--bg-card); color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; cursor:pointer;
+    -webkit-appearance:none; appearance:none; min-width:140px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%237A7060' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 13px center; background-size:10px 6px;
+    transition:border-color 0.15s,box-shadow 0.15s;
+  }
+  .toolbar input[type=date] { min-width:130px; padding:0 12px; background-image:none; cursor:text; }
+  .nsel:focus, .toolbar input[type=date]:focus { border-color:var(--text); box-shadow:0 0 0 3px rgba(28,26,20,0.07); outline:none; }
+  .date-sep { font-size:12px; color:var(--text-faint); }
+  .no-abit-warning { background:rgba(139,69,19,0.06); border:1px solid rgba(139,69,19,0.15); border-radius:var(--radius-md); padding:10px 14px; font-size:13px; margin-bottom:14px; }
+  .no-abit-warning a { color:var(--accent-alert); font-weight:500; }
+  .pdf-filter-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 14px; background:var(--bg); border:1px dashed var(--border-strong); border-radius:var(--radius-md); margin-bottom:14px; font-size:12.5px; color:var(--text-muted); }
+  .pdf-filter-bar b { color:var(--text); }
+  .pdf-filter-bar svg { vertical-align:-2px; margin-right:2px; opacity:0.6; }
+
+  @media (max-width:760px) {
+    .toolbar-left { flex-direction:column; align-items:stretch; }
+    .nsel, .toolbar input[type=date] { width:100%; min-width:0; }
+    .date-range { display:flex; align-items:center; gap:8px; width:100%; }
+    .date-range input[type=date] { flex:1; }
+  }
+  @media (max-width:420px) {
+    table { table-layout:auto; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-eyebrow">Gestione lavori</div>
+    <div class="header-title">Spese &amp; Preventivi</div>
+    <div class="header-subtitle">Registra le spese ed esporta il PDF filtrato</div>
+  </div>
+  <nav class="topnav">
+    <a href="index.html">Home</a>
+    <a href="spese.html">Spese &amp; Preventivi</a>
+    <a href="anagrafiche.html">Anagrafiche</a>
+  </nav>
+</header>
+
+<main class="main">
+  <div id="noAbitWarning" class="no-abit-warning" style="display:none">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M12 3.5 21.5 20h-19L12 3.5Z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></svg>
+    Non hai ancora registrato nessuna abitazione/ufficio. <a href="anagrafiche.html">Aggiungine una</a> prima di inserire una spesa.
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-right">
+      <button class="btn pdf-btn" onclick="exportPDF()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="1" width="9" height="12" rx="1.5" stroke="white" stroke-width="1.4"/>
+          <path d="M7 1v4h4" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M5 8.5h6M5 11h4" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        Esporta PDF
+      </button>
+      <button class="btn primary" id="addBtn" onclick="openModal()">+ Aggiungi</button>
+    </div>
+    <div class="toolbar-left">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <circle cx="6.5" cy="6.5" r="5" stroke="#1C1A14" stroke-width="1.5"/>
+          <line x1="10.5" y1="10.5" x2="14.5" y2="14.5" stroke="#1C1A14" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Cerca descrizione o ditta…">
+      </div>
+      <select class="nsel" id="filterAbitazione"><option value="">Tutte le abitazioni</option></select>
+      <select class="nsel" id="filterDitta"><option value="">Tutte le ditte</option></select>
+      <select class="nsel" id="filterStato">
+        <option value="">Tutti gli stati</option>
+        <option value="previsto">Previsto</option>
+        <option value="confermato">Confermato</option>
+        <option value="pagato">Pagato</option>
+      </select>
+      <div class="date-range">
+        <input type="date" id="filterDataDa" title="Dal">
+        <span class="date-sep">→</span>
+        <input type="date" id="filterDataA" title="Al">
+      </div>
+    </div>
+  </div>
+
+  <div id="pdfFilterBar" class="pdf-filter-bar" style="display:none"></div>
+
+  <div class="table-wrap">
+    <table>
+      <colgroup>
+        <col style="width:30px">
+        <col style="width:70px">
+        <col>
+        <col style="width:80px">
+        <col style="width:196px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Data</th>
+          <th>Descrizione</th>
+          <th>Importo</th>
+          <th>Stato</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyMsg" style="display:none">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="11" height="18" rx="1"/><path d="M9 3v18M7 7h1M7 11h1M7 15h1M11 7h1M11 11h1M11 15h1"/><path d="M15 10h4a1 1 0 0 1 1 1v10h-5"/></svg></div>
+      <p>Nessuna spesa trovata.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Modal spesa -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Nuova spesa</div>
+      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Data</label><input type="date" id="f-data"></div>
+      <div class="field"><label>Abitazione / Ufficio</label>
+        <select id="f-abitazione"></select>
+        <small class="hint">Gestisci l'elenco in <a href="anagrafiche.html">Ditte &amp; Abitazioni</a></small>
+      </div>
+    </div>
+    <div class="field"><label>Descrizione</label><input type="text" id="f-desc" placeholder="es. Demolizione pareti"></div>
+    <div class="field-row">
+      <div class="field"><label>Categoria (main)</label>
+        <select id="f-cat-main">
+          <option value="">Seleziona categoria</option>
+        </select>
+        <small class="hint">Gestisci l'elenco in <a href="anagrafiche.html">Anagrafiche</a></small>
+      </div>
+      <div class="field"><label>Sottocategoria (opz.)</label><input type="text" id="f-cat-sub" placeholder="es. Ristrutturazione bagno"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Ditta esecutrice</label>
+        <input type="text" id="f-ditta" list="dittaList" placeholder="Nome ditta">
+        <datalist id="dittaList"></datalist>
+        <small class="hint">Autocompletamento da <a href="anagrafiche.html">Ditte &amp; Abitazioni</a>, oppure scrivi un nome nuovo</small>
+      </div>
+      <div class="field"><label>Importo Totale (€)</label><input type="number" id="f-importo" inputmode="decimal" placeholder="0" min="0"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Importo Pagato (€)</label><input type="number" id="f-importo-pagato" inputmode="decimal" placeholder="0" min="0"></div>
+      <div class="field"><label>Data Pagamento</label><input type="date" id="f-data-pagamento"></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="f-note" placeholder="Dettagli aggiuntivi, numero preventivo…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn secondary-cancel" onclick="closeModal()">Annulla</button>
+      <button class="btn primary" onclick="saveEntry()">Salva spesa</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared.js"></script>
+<script>
+let editId = null;
+let renderTimeout = null;
+
+function debounceRender() { clearTimeout(renderTimeout); renderTimeout = setTimeout(() => render(), 150); }
+
+/* ── Popola i dropdown dinamici (abitazioni/ditte) mantenendo la selezione corrente ── */
+function populateDynamicControls() {
+  const abitazioni = getAbitazioni();
+  const ditte = getDitte();
+  const spese = getSpese();
+
+  document.getElementById('noAbitWarning').style.display = abitazioni.length ? 'none' : 'block';
+  document.getElementById('addBtn').disabled = !abitazioni.length;
+
+  // filtro abitazione
+  const fa = document.getElementById('filterAbitazione');
+  const faVal = fa.value;
+  fa.innerHTML = '<option value="">Tutte le abitazioni</option>' + abitazioni.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('');
+  fa.value = abitazioni.some(a => a.id === faVal) ? faVal : '';
+
+  // filtro ditta: unione ditte registrate + nomi usati nelle spese
+  const dittaNames = new Set(ditte.map(d => d.nome));
+  spese.forEach(s => { if (s.ditta) dittaNames.add(s.ditta); });
+  const fd = document.getElementById('filterDitta');
+  const fdVal = fd.value;
+  fd.innerHTML = '<option value="">Tutte le ditte</option>' + [...dittaNames].sort().map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  fd.value = dittaNames.has(fdVal) ? fdVal : '';
+
+  // select abitazione nel modale
+  const fmodal = document.getElementById('f-abitazione');
+  fmodal.innerHTML = abitazioni.map(a => `<option value="${a.id}">${esc(a.nome)}</option>`).join('') || '<option value="">Nessuna abitazione registrata</option>';
+
+  // datalist ditte nel modale
+  document.getElementById('dittaList').innerHTML = ditte.map(d => `<option value="${esc(d.nome)}">`).join('');
+
+  // select categorie nel modale (dinamiche, gestite in Anagrafiche)
+  const categorie = getCategorie();
+  const fcat = document.getElementById('f-cat-main');
+  const fcatVal = fcat.value;
+  fcat.innerHTML = '<option value="">Seleziona categoria</option>' + categorie.map(c => `<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
+  fcat.value = categorie.some(c => c.nome === fcatVal) ? fcatVal : '';
+}
+
+function getFilters() {
+  return {
+    search: document.getElementById('searchInput').value.toLowerCase(),
+    abitazioneId: document.getElementById('filterAbitazione').value,
+    ditta: document.getElementById('filterDitta').value,
+    stato: document.getElementById('filterStato').value,
+    dataDa: document.getElementById('filterDataDa').value,
+    dataA: document.getElementById('filterDataA').value
+  };
+}
+
+function applyFilters(spese, f) {
+  return spese.filter(d => {
+    if (f.search && !d.desc.toLowerCase().includes(f.search) && !(d.ditta || '').toLowerCase().includes(f.search)) return false;
+    if (f.abitazioneId && d.abitazioneId !== f.abitazioneId) return false;
+    if (f.ditta && d.ditta !== f.ditta) return false;
+    if (f.stato && calcStato(d.importo, d.importoPagato) !== f.stato) return false;
+    if (f.dataDa && (!d.data || d.data < f.dataDa)) return false;
+    if (f.dataA && (!d.data || d.data > f.dataA)) return false;
+    return true;
+  });
+}
+
+function renderPdfFilterBar(f) {
+  const bar = document.getElementById('pdfFilterBar');
+  const chips = [];
+  if (f.abitazioneId) chips.push(`Abitazione: <b>${esc(abitazioneLabel(f.abitazioneId))}</b>`);
+  if (f.ditta) chips.push(`Ditta: <b>${esc(f.ditta)}</b>`);
+  if (f.stato) chips.push(`Stato: <b>${f.stato}</b>`);
+  if (f.dataDa) chips.push(`Dal: <b>${f.dataDa}</b>`);
+  if (f.dataA) chips.push(`Al: <b>${f.dataA}</b>`);
+  if (f.search) chips.push(`Ricerca: <b>"${esc(f.search)}"</b>`);
+  if (!chips.length) { bar.style.display = 'none'; bar.innerHTML=''; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = ICON_SEARCH + ' Filtri attivi (si applicano anche all\u2019export PDF) — ' + chips.join(' · ');
+}
+
+function render() {
+  populateDynamicControls();
+  const spese = getSpese();
+  const f = getFilters();
+  renderPdfFilterBar(f);
+  const rows = applyFilters(spese, f).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyMsg');
+  if (!rows.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = rows.map(d => {
+    const stato = calcStato(d.importo, d.importoPagato);
+    const catLabel = d.categoria?.sub ? `${d.categoria.main} / ${d.categoria.sub}` : (d.categoria?.main || '—');
+    const dateStr = d.data ? new Date(d.data).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    const abitNome = abitazioneLabel(d.abitazioneId);
+    const dataPagStr = d.dataPagamento ? new Date(d.dataPagamento).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
+    return `<tr class="spesa-row" data-id="${d.id}" onclick="toggleRow('${d.id}')">
+      <td class="td-toggle"><button class="chevron-btn" title="Mostra dettagli">${ICON_CHEVRON}</button></td>
+      <td class="td-data">${dateStr}</td>
+      <td>
+        <span class="td-desc-main">${esc(d.desc)}</span>
+        <span class="td-desc-note">${esc(abitNome)}</span>
+      </td>
+      <td class="td-imp">${fmt(d.importo)}</td>
+      <td>
+        <div class="td-stato-wrap">
+          <span class="stato-pill ${stato}">${stato.charAt(0).toUpperCase() + stato.slice(1)}</span>
+          <div class="td-act-group">
+            <button class="icon-btn edit" onclick="event.stopPropagation();editEntry('${d.id}')" title="Modifica">${ICON_EDIT}</button>
+            <button class="icon-btn del" onclick="event.stopPropagation();deleteEntry('${d.id}')" title="Elimina">${ICON_DELETE}</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+    <tr class="spesa-detail" id="detail-${d.id}">
+      <td colspan="5">
+        <div class="detail-inner">
+          <div class="detail-grid">
+            <div><span class="detail-label">Categoria</span><span class="detail-value">${esc(catLabel)}</span></div>
+            <div><span class="detail-label">Ditta</span><span class="detail-value">${d.ditta ? esc(d.ditta) : '—'}</span></div>
+            <div><span class="detail-label">Abitazione / Ufficio</span><span class="detail-value">${esc(abitNome)}</span></div>
+            <div><span class="detail-label">Importo pagato</span><span class="detail-value">${fmt(d.importoPagato || 0)}</span></div>
+            ${dataPagStr ? `<div><span class="detail-label">Data pagamento</span><span class="detail-value">${dataPagStr}</span></div>` : ''}
+            ${d.note ? `<div class="detail-note-full"><span class="detail-label">Note</span><span class="detail-value">${esc(d.note)}</span></div>` : ''}
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleRow(id) {
+  const row = document.querySelector(`.spesa-row[data-id="${id}"]`);
+  const detail = document.getElementById(`detail-${id}`);
+  if (!row || !detail) return;
+  const open = row.classList.toggle('open');
+  detail.classList.toggle('open', open);
+}
+
+function openModal(id) {
+  if (!getAbitazioni().length) { showToast('Registra prima un\u2019abitazione'); return; }
+  editId = id || null;
+  document.getElementById('modalTitle').textContent = id ? 'Modifica spesa' : 'Nuova spesa';
+  if (id) {
+    const d = getSpese().find(x => x.id === id);
+    document.getElementById('f-data').value = d.data || '';
+    document.getElementById('f-desc').value = d.desc;
+    document.getElementById('f-cat-main').value = d.categoria?.main || '';
+    document.getElementById('f-cat-sub').value = d.categoria?.sub || '';
+    document.getElementById('f-abitazione').value = d.abitazioneId || '';
+    document.getElementById('f-ditta').value = d.ditta || '';
+    document.getElementById('f-importo').value = d.importo || '';
+    document.getElementById('f-importo-pagato').value = d.importoPagato || '';
+    document.getElementById('f-data-pagamento').value = d.dataPagamento || '';
+    document.getElementById('f-note').value = d.note || '';
+  } else {
+    document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+    ['f-desc', 'f-cat-sub', 'f-ditta', 'f-importo', 'f-importo-pagato', 'f-data-pagamento', 'f-note'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-cat-main').value = '';
+    document.getElementById('f-abitazione').selectedIndex = 0;
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function editEntry(id) { openModal(id); }
+function deleteEntry(id) {
+  if (!confirm('Eliminare questa spesa?')) return;
+  deleteSpesa(id); render();
+  showToast('Spesa eliminata');
+}
+function saveEntry() {
+  const desc = document.getElementById('f-desc').value.trim();
+  if (!desc) { alert('Inserisci una descrizione.'); return; }
+  const catMain = document.getElementById('f-cat-main').value.trim();
+  if (!catMain) { alert('Seleziona una categoria.'); return; }
+  const abitazioneId = document.getElementById('f-abitazione').value;
+  if (!abitazioneId) { alert('Seleziona un\u2019abitazione/ufficio.'); return; }
+  const entry = {
+    id: editId || generateId(),
+    data: document.getElementById('f-data').value,
+    desc,
+    categoria: { main: catMain, sub: document.getElementById('f-cat-sub').value.trim() },
+    abitazioneId,
+    ditta: document.getElementById('f-ditta').value.trim(),
+    importo: parseFloat(document.getElementById('f-importo').value) || 0,
+    importoPagato: parseFloat(document.getElementById('f-importo-pagato').value) || 0,
+    dataPagamento: document.getElementById('f-data-pagamento').value,
+    note: document.getElementById('f-note').value.trim()
+  };
+  upsertSpesa(entry);
+  closeModal(); render();
+  showToast(editId ? 'Spesa aggiornata' : 'Spesa aggiunta');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// EXPORT PDF — rispetta i filtri attivi in toolbar (ditta, abitazione, date, stato, ricerca)
+// ════════════════════════════════════════════════════════════════════════════
+function exportPDF() {
+  const allSpese = getSpese();
+  const f = getFilters();
+  const data = applyFilters(allSpese, f);
+  if (!data.length) { showToast('Nessuna spesa da esportare con questi filtri'); return; }
+  if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+    showToast('Libreria PDF non disponibile.'); return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, M = 16, CW = PW - M * 2;
+  const today = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const C = {
+    dark: [28, 26, 20], slate: [58, 58, 60], muted: [122, 112, 96], faint: [176, 168, 152],
+    light: [242, 242, 247], white: [255, 255, 255], accent: [74, 103, 65], accentL: [238, 242, 237], border: [209, 209, 214],
+  };
+
+  function setFill(rgb) { doc.setFillColor(...rgb); }
+  function setStroke(rgb) { doc.setDrawColor(...rgb); }
+  function setColor(rgb) { doc.setTextColor(...rgb); }
+  function font(style, size) { doc.setFont('helvetica', style); doc.setFontSize(size); }
+  function lbl(txt, x, y, opts = {}) {
+    const { color = C.dark, align = 'left', style = 'normal', size = 9 } = opts;
+    font(style, size); setColor(color);
+    doc.text(String(txt), x, y, { align });
+  }
+  function hline(y, lw = 0.3) { setStroke(C.border); doc.setLineWidth(lw); doc.line(M, y, M + CW, y); }
+  function roundRect(x, y, w, h, r, mode) { r = Math.min(r, w / 2, h / 2); doc.roundedRect(x, y, w, h, r, r, mode || 'F'); }
+  function progressBar(x, y, w, h, pct) {
+    setFill(C.light); roundRect(x, y, w, h, h / 2);
+    if (pct > 0) { setFill(C.accent); roundRect(x, y, Math.max(w * pct, h), h, h / 2); }
+  }
+  function pageFooter(num) {
+    hline(PH - 14);
+    lbl(`Tracker Ristrutturazione  ·  ${today}`, M, PH - 10, { color: C.faint, size: 7 });
+    lbl(`${num} / __`, M + CW, PH - 10, { color: C.faint, size: 7, align: 'right' });
+  }
+  function fixUpPageNumbers() {
+    const total = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= total; p++) {
+      doc.setPage(p);
+      doc.setFillColor(255, 255, 255);
+      doc.rect(M + CW - 30, PH - 13, 30, 5, 'F');
+      lbl(`${p} / ${total}`, M + CW, PH - 10, { color: C.faint, size: 7, align: 'right' });
+    }
+  }
+  function fmtPDF(n) {
+    n = Math.round((n || 0) * 100) / 100;
+    const neg = n < 0; n = Math.abs(n);
+    const parts = n.toFixed(2).split('.');
+    let intPart = parts[0]; const decPart = parts[1];
+    let grouped = '';
+    for (let i = 0; i < intPart.length; i++) { if (i > 0 && (intPart.length - i) % 3 === 0) grouped += '.'; grouped += intPart[i]; }
+    return (neg ? '-' : '') + grouped + ',' + decPart + ' EUR';
+  }
+  function dataPagamentoStr(d) {
+    return d.dataPagamento ? new Date(d.dataPagamento).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+  }
+
+  const totals = calcTotals(data);
+  const catData = calcByCategory(data);
+  const cats = Object.entries(catData).map(([n, d]) => ({ name: n, ...d })).sort((a, b) => b.importo - a.importo);
+  const forn = calcTopDitte(data);
+  const sorted = [...data].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  const abitazioni = getAbitazioni();
+  const abitConTotali = Object.entries(totals.perAbitazione)
+    .map(([id, t]) => ({ id, nome: abitazioneLabel(id), ...t }))
+    .sort((a, b) => b.importo - a.importo)
+    .slice(0, 4);
+
+  // ── Riga descrittiva filtri applicati (se presenti) ──
+  const filterChips = [];
+  if (f.abitazioneId) filterChips.push(`Abitazione: ${abitazioneLabel(f.abitazioneId)}`);
+  if (f.ditta) filterChips.push(`Ditta: ${f.ditta}`);
+  if (f.stato) filterChips.push(`Stato: ${f.stato}`);
+  if (f.dataDa) filterChips.push(`Dal ${f.dataDa}`);
+  if (f.dataA) filterChips.push(`Al ${f.dataA}`);
+  const filterLine = filterChips.length ? filterChips.join('  ·  ') : 'Nessun filtro applicato — riepilogo completo';
+
+  // ══ PAGINA 1 — RIEPILOGO ══
+  setFill(C.dark); doc.rect(0, 0, PW, 42, 'F');
+  lbl('TRACKER RISTRUTTURAZIONE', M, 17, { color: C.white, style: 'bold', size: 17 });
+  lbl(`Riepilogo lavori  ·  Generato il ${today}`, M, 26, { color: C.faint, size: 8 });
+  lbl(`${data.length} voci  ·  ${filterLine}`, M, 32, { color: C.faint, size: 7.5 });
+  lbl(fmtPDF(totals.totale), M + CW, 17, { color: C.white, style: 'bold', size: 17, align: 'right' });
+  lbl('Totale filtrato', M + CW, 26, { color: C.faint, size: 8, align: 'right' });
+
+  let y = 50;
+  const n = Math.max(abitConTotali.length, 1);
+  const gap = 4;
+  const cwN = (CW - gap * (n - 1)) / n, ch = 26;
+  if (abitConTotali.length) {
+    abitConTotali.forEach((u, i) => {
+      const cx = M + i * (cwN + gap);
+      setFill(C.light); roundRect(cx, y, cwN, ch, 3);
+      const nomeShort = u.nome.length > 22 ? u.nome.slice(0, 21) + '…' : u.nome;
+      lbl(nomeShort, cx + 4, y + 9, { color: C.slate, style: 'bold', size: 7.5 });
+      lbl(fmtPDF(u.importo), cx + 4, y + 18, { color: C.accent, style: 'bold', size: 12 });
+      lbl(`${u.voci} voci`, cx + 4, y + 23, { color: C.muted, size: 6.5 });
+    });
+  } else {
+    setFill(C.light); roundRect(M, y, CW, ch, 3);
+    lbl('Nessuna abitazione collegata alle voci filtrate', M + 4, y + 15, { color: C.muted, size: 8 });
+  }
+
+  y += ch + 11;
+  lbl('AVANZAMENTO PAGAMENTI', M, y, { color: C.muted, style: 'bold', size: 7.5 });
+  y += 6;
+  const pct = totals.totale > 0 ? totals.pagato / totals.totale : 0;
+  progressBar(M, y, CW, 5, pct);
+  y += 5 + 5;
+
+  [
+    { color: C.accent, txt: `Pagato  ${fmtPDF(totals.pagato)}` },
+    { color: C.border, txt: `Confermato  ${fmtPDF(totals.confermato)}` },
+    { color: C.light, txt: `Previsto  ${fmtPDF(totals.previsto)}` },
+  ].forEach((li, i) => {
+    const lx = M + i * 65;
+    setFill(li.color); doc.circle(lx + 2, y, 1.8, 'F');
+    lbl(li.txt, lx + 5.5, y + 1, { color: C.slate, size: 7.5 });
+  });
+
+  y += 11; hline(y); y += 9;
+  const colW = (CW - 10) / 2;
+  function insightCol(title, rows, cx, startY) {
+    lbl(title, cx, startY, { color: C.muted, style: 'bold', size: 7.5 });
+    let sy = startY + 8;
+    rows.forEach(row => {
+      lbl(row.name.slice(0, 26), cx, sy, { color: C.dark, size: 8 });
+      lbl(fmtPDF(row.total), cx + colW, sy, { color: C.dark, style: 'bold', size: 8, align: 'right' });
+      sy += 4;
+      progressBar(cx, sy, colW, 2, row.pct);
+      sy += 6;
+    });
+  }
+  insightCol('CATEGORIE', cats.slice(0, 4).map(c => ({ name: c.name, total: c.importo, pct: totals.totale > 0 ? c.importo / totals.totale : 0 })), M, y);
+  insightCol('TOP DITTE', forn.slice(0, 4).map(fo => ({ name: fo.name, total: fo.total, pct: totals.totale > 0 ? fo.total / totals.totale : 0 })), M + colW + 10, y);
+  pageFooter(1);
+
+  // ══ PAGINA 2+ — ELENCO SPESE ══
+  doc.addPage();
+  function drawListHeader(isFirst) {
+    setFill(C.dark); doc.rect(0, 0, PW, 28, 'F');
+    lbl(isFirst ? 'ELENCO SPESE' : 'ELENCO SPESE (segue)', M, 14, { color: C.white, style: 'bold', size: 14 });
+    lbl(`${data.length} voci  ·  Totale ${fmtPDF(totals.totale)}`, M, 22, { color: C.faint, size: 8 });
+  }
+  const cols = [
+    { x: M, w: 16, head: 'DATA', align: 'left' },
+    { x: M + 17, w: 56, head: 'DESCRIZIONE', align: 'left' },
+    { x: M + 75, w: 30, head: 'CATEGORIA', align: 'left' },
+    { x: M + 107, w: 28, head: 'DITTA', align: 'left' },
+    { x: M + 137, w: 22, head: 'IMPORTO', align: 'right' },
+    { x: M + 161, w: 17, head: 'STATO', align: 'center' },
+  ];
+  function drawTableHeader(yPos) {
+    setFill(C.dark); roundRect(M, yPos - 1, CW, 7, 2);
+    cols.forEach(col => {
+      const tx = col.align === 'right' ? col.x + col.w : col.align === 'center' ? col.x + col.w / 2 : col.x + 1.5;
+      lbl(col.head, tx, yPos + 3.5, { color: C.white, style: 'bold', size: 6.5, align: col.align });
+    });
+    return yPos + 8.5;
+  }
+  drawListHeader(true);
+  y = 35; y = drawTableHeader(y);
+  const PAGE_BOTTOM_LIMIT = PH - 18;
+  const LINE_H = 3.6;
+
+  sorted.forEach(d => {
+    const descLines = doc.splitTextToSize(d.desc, cols[1].w - 3);
+    const catMain = (d.categoria?.main || '—');
+    const catLines = doc.splitTextToSize(catMain, cols[2].w - 3);
+    const dittaLines = doc.splitTextToSize((d.ditta || '—'), cols[3].w - 3);
+    const descBlockLines = descLines.length + 1;
+    const catBlockLines = catLines.length + (d.categoria?.sub ? 1 : 0);
+    const maxLines = Math.max(descBlockLines, catBlockLines, dittaLines.length, 1);
+    const rowH = Math.max(12, maxLines * LINE_H + 4);
+
+    if (y + rowH > PAGE_BOTTOM_LIMIT) {
+      pageFooter(doc.internal.getNumberOfPages());
+      doc.addPage(); drawListHeader(false); y = 35; y = drawTableHeader(y);
+    }
+
+    setFill(sorted.indexOf(d) % 2 === 0 ? C.light : C.white);
+    roundRect(M, y, CW, rowH, 1.5);
+
+    const topPad = y + 4.5;
+    const midY = y + rowH / 2 + 1.2;
+
+    lbl(dataPagamentoStr(d), cols[0].x + 1.5, midY, { color: C.slate, style: 'bold', size: 7 });
+
+    let dy = topPad;
+    descLines.forEach(line => { lbl(line, cols[1].x + 1.5, dy, { color: C.dark, style: 'bold', size: 7.5 }); dy += LINE_H; });
+    const abitLabel = abitazioneLabel(d.abitazioneId);
+    lbl(abitLabel, cols[1].x + 1.5, dy + 0.4, { color: C.muted, size: 6.5 });
+
+    let cy = topPad;
+    catLines.forEach(line => { lbl(line, cols[2].x + 1.5, cy, { color: C.slate, size: 7 }); cy += LINE_H; });
+    if (d.categoria?.sub) {
+      const sub = d.categoria.sub.length > 24 ? d.categoria.sub.slice(0, 23) + '…' : d.categoria.sub;
+      lbl(sub, cols[2].x + 1.5, cy + 0.4, { color: C.muted, size: 6.5 });
+    }
+
+    let fy = topPad;
+    dittaLines.forEach(line => { lbl(line, cols[3].x + 1.5, fy, { color: C.slate, size: 7 }); fy += LINE_H; });
+
+    lbl(fmtPDF(d.importo), cols[4].x + cols[4].w, midY, { color: C.dark, style: 'bold', size: 8, align: 'right' });
+
+    const stato = calcStato(d.importo, d.importoPagato);
+    const statoLabel = stato.charAt(0).toUpperCase() + stato.slice(1);
+    const statoY = y + rowH / 2;
+    setFill(C.accentL); roundRect(cols[5].x, statoY - 2.5, cols[5].w, 5, 2.5);
+    lbl(statoLabel, cols[5].x + cols[5].w / 2, statoY + 0.8, { color: C.accent, align: 'center', style: 'bold', size: 6.5 });
+
+    y += rowH + 1;
+  });
+
+  y += 2; hline(y - 1); y += 5;
+  lbl('TOTALE', cols[0].x + 1.5, y, { color: C.dark, style: 'bold', size: 9 });
+  lbl(fmtPDF(totals.totale), cols[4].x + cols[4].w, y, { color: C.accent, style: 'bold', size: 9, align: 'right' });
+
+  pageFooter(doc.internal.getNumberOfPages());
+  fixUpPageNumbers();
+
+  doc.save(`ristrutturazione_${new Date().toISOString().slice(0, 10)}.pdf`);
+  showToast('PDF esportato con successo');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  runMigrationIfNeeded();
+  populateDynamicControls();
+  render();
+  ['searchInput'].forEach(id => document.getElementById(id).addEventListener('input', debounceRender));
+  ['filterAbitazione', 'filterDitta', 'filterStato', 'filterDataDa', 'filterDataA'].forEach(id => document.getElementById(id).addEventListener('change', render));
+});
+</script>
+</body>
+</html>

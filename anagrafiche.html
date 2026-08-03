@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tracker Ristrutturazione — Anagrafiche</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-eyebrow">Anagrafica</div>
+    <div class="header-title">Anagrafiche</div>
+    <div class="header-subtitle">Ditte, abitazioni/uffici e categorie di spesa</div>
+  </div>
+  <nav class="topnav">
+    <a href="index.html">Home</a>
+    <a href="spese.html">Spese &amp; Preventivi</a>
+    <a href="anagrafiche.html">Anagrafiche</a>
+  </nav>
+</header>
+
+<main class="main">
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtnDitte" onclick="switchTab('ditte')">Ditte</button>
+    <button class="tab-btn" id="tabBtnAbit" onclick="switchTab('abitazioni')">Abitazioni</button>
+    <button class="tab-btn" id="tabBtnCat" onclick="switchTab('categorie')">Categorie</button>
+  </div>
+
+  <!-- ── TAB DITTE ── -->
+  <div id="panelDitte">
+    <div class="toolbar">
+      <div class="toolbar-left"><div style="font-size:13px;color:var(--text-muted)" id="ditteCount"></div></div>
+      <div class="toolbar-right"><button class="btn primary" onclick="openDittaModal()">+ Nuova ditta</button></div>
+    </div>
+    <div class="reg-grid" id="ditteGrid"></div>
+    <div class="empty-state" id="ditteEmpty" style="display:none">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="11" height="18" rx="1"/><path d="M9 3v18M7 7h1M7 11h1M7 15h1M11 7h1M11 11h1M11 15h1"/><path d="M15 10h4a1 1 0 0 1 1 1v10h-5"/></svg></div>
+      <p>Nessuna ditta registrata.</p>
+      <button class="btn primary" onclick="openDittaModal()">+ Aggiungi la prima ditta</button>
+    </div>
+  </div>
+
+  <!-- ── TAB ABITAZIONI ── -->
+  <div id="panelAbitazioni" style="display:none">
+    <div class="toolbar">
+      <div class="toolbar-left"><div style="font-size:13px;color:var(--text-muted)" id="abitCount"></div></div>
+      <div class="toolbar-right"><button class="btn primary" onclick="openAbitModal()">+ Nuova abitazione</button></div>
+    </div>
+    <div class="reg-grid" id="abitGrid"></div>
+    <div class="empty-state" id="abitEmpty" style="display:none">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V19a1 1 0 0 0 1 1H10v-5a2 2 0 0 1 2-2v0a2 2 0 0 1 2 2v5h3.5a1 1 0 0 0 1-1V9.5"/></svg></div>
+      <p>Nessuna abitazione registrata.</p>
+      <button class="btn primary" onclick="openAbitModal()">+ Aggiungi la prima abitazione</button>
+    </div>
+  </div>
+
+  <!-- ── TAB CATEGORIE ── -->
+  <div id="panelCategorie" style="display:none">
+    <div class="toolbar">
+      <div class="toolbar-left"><div style="font-size:13px;color:var(--text-muted)" id="catCount"></div></div>
+      <div class="toolbar-right"><button class="btn primary" onclick="openCatModal()">+ Nuova categoria</button></div>
+    </div>
+    <div class="reg-grid" id="catGrid"></div>
+    <div class="empty-state" id="catEmpty" style="display:none">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3h6a2 2 0 0 1 2 2v6l-9.5 9.5a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L11 3Z"/><circle cx="15" cy="8" r="1.4" fill="currentColor" stroke="none"/></svg></div>
+      <p>Nessuna categoria registrata.</p>
+      <button class="btn primary" onclick="openCatModal()">+ Aggiungi la prima categoria</button>
+    </div>
+  </div>
+</main>
+
+<!-- Modal Ditta -->
+<div class="modal-overlay" id="dittaModalOverlay" onclick="if(event.target===this)closeDittaModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="dittaModalTitle">Nuova ditta</div>
+      <button class="modal-close" onclick="closeDittaModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="field"><label>Ragione sociale</label><input type="text" id="d-nome" placeholder="es. Rossi Costruzioni Srl"></div>
+    <div class="field-row">
+      <div class="field"><label>P.IVA / C.F.</label><input type="text" id="d-piva" placeholder="es. 01234567890"></div>
+      <div class="field"><label>Referente</label><input type="text" id="d-referente" placeholder="Nome referente"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Telefono</label><input type="tel" id="d-telefono" placeholder="es. 333 1234567"></div>
+      <div class="field"><label>Email</label><input type="email" id="d-email" placeholder="es. info@ditta.it"></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="d-note" placeholder="Specializzazione, riferimenti, condizioni…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn secondary-cancel" onclick="closeDittaModal()">Annulla</button>
+      <button class="btn primary" onclick="saveDittaForm()">Salva ditta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Abitazione -->
+<div class="modal-overlay" id="abitModalOverlay" onclick="if(event.target===this)closeAbitModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="abitModalTitle">Nuova abitazione</div>
+      <button class="modal-close" onclick="closeAbitModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="field"><label>Nome / etichetta</label><input type="text" id="a-nome" placeholder="es. Casa Piano Terra, Ufficio Milano…"></div>
+    <div class="field"><label>Indirizzo</label><input type="text" id="a-indirizzo" placeholder="Via, civico, città"></div>
+    <div class="field-row3">
+      <div class="field"><label>Foglio</label><input type="text" id="a-foglio" placeholder="es. 12"></div>
+      <div class="field"><label>Particella</label><input type="text" id="a-particella" placeholder="es. 345"></div>
+      <div class="field"><label>Subalterno</label><input type="text" id="a-subalterno" placeholder="es. 7"></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="a-note" placeholder="Dettagli aggiuntivi…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn secondary-cancel" onclick="closeAbitModal()">Annulla</button>
+      <button class="btn primary" onclick="saveAbitForm()">Salva abitazione</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Categoria -->
+<div class="modal-overlay" id="catModalOverlay" onclick="if(event.target===this)closeCatModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="catModalTitle">Nuova categoria</div>
+      <button class="modal-close" onclick="closeCatModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="field"><label>Nome categoria</label><input type="text" id="c-nome" placeholder="es. Impianto elettrico"></div>
+    <div class="modal-footer">
+      <button class="btn secondary-cancel" onclick="closeCatModal()">Annulla</button>
+      <button class="btn primary" onclick="saveCatForm()">Salva categoria</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared.js"></script>
+<script>
+let editDittaId = null;
+let editAbitId = null;
+let editCatId = null;
+
+function switchTab(tab) {
+  document.getElementById('panelDitte').style.display = tab === 'ditte' ? 'block' : 'none';
+  document.getElementById('panelAbitazioni').style.display = tab === 'abitazioni' ? 'block' : 'none';
+  document.getElementById('panelCategorie').style.display = tab === 'categorie' ? 'block' : 'none';
+  document.getElementById('tabBtnDitte').classList.toggle('active', tab === 'ditte');
+  document.getElementById('tabBtnAbit').classList.toggle('active', tab === 'abitazioni');
+  document.getElementById('tabBtnCat').classList.toggle('active', tab === 'categorie');
+}
+
+/* ── DITTE ── */
+function renderDitte() {
+  const ditte = getDitte();
+  const spese = getSpese();
+  document.getElementById('ditteCount').textContent = `${ditte.length} ditt${ditte.length===1?'a':'e'} registrat${ditte.length===1?'a':'e'}`;
+  const grid = document.getElementById('ditteGrid');
+  const empty = document.getElementById('ditteEmpty');
+  if (!ditte.length) { grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML = ditte.map(d => {
+    const voci = spese.filter(s => s.ditta === d.nome).length;
+    const speso = spese.filter(s => s.ditta === d.nome).reduce((a,s)=>a+(s.importo||0),0);
+    return `<div class="reg-card">
+      <div class="reg-card-actions">
+        <button class="icon-btn edit" onclick="openDittaModal('${d.id}')" title="Modifica">${ICON_EDIT}</button>
+        <button class="icon-btn del" onclick="removeDitta('${d.id}')" title="Elimina">${ICON_DELETE}</button>
+      </div>
+      <div class="reg-card-title">${esc(d.nome)}</div>
+      <div class="reg-card-sub">${d.piva?('P.IVA '+esc(d.piva)):''}${d.referente?(' · '+esc(d.referente)):''}</div>
+      <div class="reg-card-meta">
+        ${d.telefono?('<span class="meta-icon">'+ICON_PHONE+'</span> '+esc(d.telefono)+'<br>'):''}
+        ${d.email?('<span class="meta-icon">'+ICON_MAIL+'</span> '+esc(d.email)+'<br>'):''}
+        ${voci} spese collegate · ${fmt(speso)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openDittaModal(id) {
+  editDittaId = id || null;
+  document.getElementById('dittaModalTitle').textContent = id ? 'Modifica ditta' : 'Nuova ditta';
+  const fields = ['d-nome','d-piva','d-referente','d-telefono','d-email','d-note'];
+  if (id) {
+    const d = getDitte().find(x=>x.id===id);
+    document.getElementById('d-nome').value = d.nome||'';
+    document.getElementById('d-piva').value = d.piva||'';
+    document.getElementById('d-referente').value = d.referente||'';
+    document.getElementById('d-telefono').value = d.telefono||'';
+    document.getElementById('d-email').value = d.email||'';
+    document.getElementById('d-note').value = d.note||'';
+  } else {
+    fields.forEach(f=>document.getElementById(f).value='');
+  }
+  document.getElementById('dittaModalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeDittaModal() {
+  document.getElementById('dittaModalOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function saveDittaForm() {
+  const nome = document.getElementById('d-nome').value.trim();
+  if (!nome) { alert('Inserisci la ragione sociale.'); return; }
+  const entry = {
+    id: editDittaId || generateId(),
+    nome,
+    piva: document.getElementById('d-piva').value.trim(),
+    referente: document.getElementById('d-referente').value.trim(),
+    telefono: document.getElementById('d-telefono').value.trim(),
+    email: document.getElementById('d-email').value.trim(),
+    note: document.getElementById('d-note').value.trim()
+  };
+  upsertDitta(entry);
+  closeDittaModal(); renderDitte();
+  showToast(editDittaId ? 'Ditta aggiornata' : 'Ditta aggiunta');
+}
+function removeDitta(id) {
+  const spese = getSpese();
+  const d = getDitte().find(x=>x.id===id);
+  const usata = d && spese.some(s=>s.ditta===d.nome);
+  const msg = usata ? 'Questa ditta è collegata a delle spese esistenti. Eliminarla comunque? Le spese manterranno il nome ma non saranno più collegate all\u2019anagrafica.' : 'Eliminare questa ditta?';
+  if (!confirm(msg)) return;
+  deleteDitta(id); renderDitte();
+  showToast('Ditta eliminata');
+}
+
+/* ── ABITAZIONI ── */
+function renderAbitazioni() {
+  const abit = getAbitazioni();
+  const spese = getSpese();
+  document.getElementById('abitCount').textContent = `${abit.length} abitazion${abit.length===1?'e':'i'} registrat${abit.length===1?'a':'e'}`;
+  const grid = document.getElementById('abitGrid');
+  const empty = document.getElementById('abitEmpty');
+  if (!abit.length) { grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML = abit.map(a => {
+    const voci = spese.filter(s=>s.abitazioneId===a.id);
+    const totale = voci.reduce((sum,s)=>sum+(s.importo||0),0);
+    const catasto = [a.foglio&&`Fg. ${a.foglio}`, a.particella&&`Part. ${a.particella}`, a.subalterno&&`Sub. ${a.subalterno}`].filter(Boolean).join(' · ');
+    return `<div class="reg-card">
+      <div class="reg-card-actions">
+        <button class="icon-btn edit" onclick="openAbitModal('${a.id}')" title="Modifica">${ICON_EDIT}</button>
+        <button class="icon-btn del" onclick="removeAbitazione('${a.id}')" title="Elimina">${ICON_DELETE}</button>
+      </div>
+      <div class="reg-card-title">${esc(a.nome)}</div>
+      <div class="reg-card-sub">${a.indirizzo?esc(a.indirizzo):'Nessun indirizzo indicato'}</div>
+      <div class="reg-card-meta">
+        ${catasto?(catasto+'<br>'):''}
+        ${voci.length} spese collegate · ${fmt(totale)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAbitModal(id) {
+  editAbitId = id || null;
+  document.getElementById('abitModalTitle').textContent = id ? 'Modifica abitazione' : 'Nuova abitazione';
+  const fields = ['a-nome','a-indirizzo','a-foglio','a-particella','a-subalterno','a-note'];
+  if (id) {
+    const a = getAbitazioni().find(x=>x.id===id);
+    document.getElementById('a-nome').value = a.nome||'';
+    document.getElementById('a-indirizzo').value = a.indirizzo||'';
+    document.getElementById('a-foglio').value = a.foglio||'';
+    document.getElementById('a-particella').value = a.particella||'';
+    document.getElementById('a-subalterno').value = a.subalterno||'';
+    document.getElementById('a-note').value = a.note||'';
+  } else {
+    fields.forEach(f=>document.getElementById(f).value='');
+  }
+  document.getElementById('abitModalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeAbitModal() {
+  document.getElementById('abitModalOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function saveAbitForm() {
+  const nome = document.getElementById('a-nome').value.trim();
+  if (!nome) { alert('Inserisci un nome/etichetta per l\u2019abitazione.'); return; }
+  const entry = {
+    id: editAbitId || generateId(),
+    nome,
+    indirizzo: document.getElementById('a-indirizzo').value.trim(),
+    foglio: document.getElementById('a-foglio').value.trim(),
+    particella: document.getElementById('a-particella').value.trim(),
+    subalterno: document.getElementById('a-subalterno').value.trim(),
+    note: document.getElementById('a-note').value.trim()
+  };
+  upsertAbitazione(entry);
+  closeAbitModal(); renderAbitazioni();
+  showToast(editAbitId ? 'Abitazione aggiornata' : 'Abitazione aggiunta');
+}
+function removeAbitazione(id) {
+  const spese = getSpese();
+  const usata = spese.some(s=>s.abitazioneId===id);
+  const msg = usata ? 'Questa abitazione è collegata a delle spese esistenti. Eliminarla comunque? Le spese resteranno ma senza abitazione collegata.' : 'Eliminare questa abitazione?';
+  if (!confirm(msg)) return;
+  deleteAbitazione(id); renderAbitazioni();
+  showToast('Abitazione eliminata');
+}
+
+/* ── CATEGORIE ── */
+function renderCategorie() {
+  const categorie = getCategorie();
+  const spese = getSpese();
+  const catData = calcByCategory(spese);
+  document.getElementById('catCount').textContent = `${categorie.length} categori${categorie.length===1?'a':'e'} registrat${categorie.length===1?'a':'e'}`;
+  const grid = document.getElementById('catGrid');
+  const empty = document.getElementById('catEmpty');
+  if (!categorie.length) { grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML = categorie.map(c => {
+    const d = catData[c.nome] || { importo: 0, voci: 0 };
+    return `<div class="reg-card">
+      <div class="reg-card-actions">
+        <button class="icon-btn edit" onclick="openCatModal('${c.id}')" title="Modifica">${ICON_EDIT}</button>
+        <button class="icon-btn del" onclick="removeCategoria('${c.id}')" title="Elimina">${ICON_DELETE}</button>
+      </div>
+      <div class="reg-card-title">${esc(c.nome)}</div>
+      <div class="reg-card-meta">${d.voci} spese collegate · ${fmt(d.importo)}</div>
+    </div>`;
+  }).join('');
+}
+
+function openCatModal(id) {
+  editCatId = id || null;
+  document.getElementById('catModalTitle').textContent = id ? 'Modifica categoria' : 'Nuova categoria';
+  document.getElementById('c-nome').value = id ? (getCategorie().find(x=>x.id===id)?.nome || '') : '';
+  document.getElementById('catModalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeCatModal() {
+  document.getElementById('catModalOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function saveCatForm() {
+  const nome = document.getElementById('c-nome').value.trim();
+  if (!nome) { alert('Inserisci il nome della categoria.'); return; }
+  const dup = getCategorie().some(c => c.nome.toLowerCase() === nome.toLowerCase() && c.id !== editCatId);
+  if (dup) { alert('Esiste già una categoria con questo nome.'); return; }
+  upsertCategoria({ id: editCatId || generateId(), nome });
+  closeCatModal(); renderCategorie();
+  showToast(editCatId ? 'Categoria aggiornata' : 'Categoria aggiunta');
+}
+function removeCategoria(id) {
+  const spese = getSpese();
+  const c = getCategorie().find(x=>x.id===id);
+  const usata = c && spese.some(s=>s.categoria?.main===c.nome);
+  const msg = usata ? 'Questa categoria è usata in alcune spese. Eliminarla comunque? Le spese manterranno il nome della categoria ma non sarà più selezionabile per le nuove voci.' : 'Eliminare questa categoria?';
+  if (!confirm(msg)) return;
+  deleteCategoria(id); renderCategorie();
+  showToast('Categoria eliminata');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  runMigrationIfNeeded();
+  renderDitte();
+  renderAbitazioni();
+  renderCategorie();
+});
+</script>
+</body>
+</html>

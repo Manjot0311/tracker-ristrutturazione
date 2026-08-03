@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Backup dati esportati dall'app (contengono dati personali, non vanno committati)
+*.backup.json
+backup-*.json
+tracker-backup*.json
+
+# Log
+npm-debug.log*
