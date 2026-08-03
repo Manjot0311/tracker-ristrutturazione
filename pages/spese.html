@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tracker Ristrutturazione — Spese</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+<link rel="stylesheet" href="../css/spese.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-eyebrow">Gestione lavori</div>
+    <div class="header-title">Spese &amp; Preventivi</div>
+    <div class="header-subtitle">Registra le spese ed esporta il PDF filtrato</div>
+  </div>
+  <nav class="topnav">
+    <a href="../index.html">Home</a>
+    <a href="spese.html">Spese &amp; Preventivi</a>
+    <a href="anagrafiche.html">Anagrafiche</a>
+  </nav>
+</header>
+
+<main class="main">
+  <div id="noAbitWarning" class="no-abit-warning" style="display:none">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M12 3.5 21.5 20h-19L12 3.5Z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></svg>
+    Non hai ancora registrato nessuna abitazione/ufficio. <a href="anagrafiche.html">Aggiungine una</a> prima di inserire una spesa.
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-right">
+      <button class="btn pdf-btn" onclick="exportPDF()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="1" width="9" height="12" rx="1.5" stroke="white" stroke-width="1.4"/>
+          <path d="M7 1v4h4" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M5 8.5h6M5 11h4" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        Esporta PDF
+      </button>
+      <button class="btn primary" id="addBtn" onclick="openModal()">+ Aggiungi</button>
+    </div>
+    <div class="toolbar-left">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <circle cx="6.5" cy="6.5" r="5" stroke="#1C1A14" stroke-width="1.5"/>
+          <line x1="10.5" y1="10.5" x2="14.5" y2="14.5" stroke="#1C1A14" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Cerca descrizione o ditta…">
+      </div>
+      <select class="nsel" id="filterAbitazione"><option value="">Tutte le abitazioni</option></select>
+      <select class="nsel" id="filterDitta"><option value="">Tutte le ditte</option></select>
+      <select class="nsel" id="filterStato">
+        <option value="">Tutti gli stati</option>
+        <option value="previsto">Previsto</option>
+        <option value="confermato">Confermato</option>
+        <option value="pagato">Pagato</option>
+      </select>
+      <div class="date-range">
+        <input type="date" id="filterDataDa" title="Dal">
+        <span class="date-sep">→</span>
+        <input type="date" id="filterDataA" title="Al">
+      </div>
+    </div>
+  </div>
+
+  <div id="pdfFilterBar" class="pdf-filter-bar" style="display:none"></div>
+
+  <div class="table-wrap">
+    <table>
+      <colgroup>
+        <col style="width:30px">
+        <col style="width:70px">
+        <col>
+        <col style="width:80px">
+        <col style="width:196px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Data</th>
+          <th>Descrizione</th>
+          <th>Importo</th>
+          <th>Stato</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyMsg" style="display:none">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="11" height="18" rx="1"/><path d="M9 3v18M7 7h1M7 11h1M7 15h1M11 7h1M11 11h1M11 15h1"/><path d="M15 10h4a1 1 0 0 1 1 1v10h-5"/></svg></div>
+      <p>Nessuna spesa trovata.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Modal spesa -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Nuova spesa</div>
+      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Data</label><input type="date" id="f-data"></div>
+      <div class="field"><label>Abitazione / Ufficio</label>
+        <select id="f-abitazione"></select>
+        <small class="hint">Gestisci l'elenco in <a href="anagrafiche.html">Ditte &amp; Abitazioni</a></small>
+      </div>
+    </div>
+    <div class="field"><label>Descrizione</label><input type="text" id="f-desc" placeholder="es. Demolizione pareti"></div>
+    <div class="field-row">
+      <div class="field"><label>Categoria (main)</label>
+        <select id="f-cat-main">
+          <option value="">Seleziona categoria</option>
+        </select>
+        <small class="hint">Gestisci l'elenco in <a href="anagrafiche.html">Anagrafiche</a></small>
+      </div>
+      <div class="field"><label>Sottocategoria (opz.)</label><input type="text" id="f-cat-sub" placeholder="es. Ristrutturazione bagno"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Ditta esecutrice</label>
+        <input type="text" id="f-ditta" list="dittaList" placeholder="Nome ditta">
+        <datalist id="dittaList"></datalist>
+        <small class="hint">Autocompletamento da <a href="anagrafiche.html">Ditte &amp; Abitazioni</a>, oppure scrivi un nome nuovo</small>
+      </div>
+      <div class="field"><label>Importo Totale (€)</label><input type="number" id="f-importo" inputmode="decimal" placeholder="0" min="0"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Importo Pagato (€)</label><input type="number" id="f-importo-pagato" inputmode="decimal" placeholder="0" min="0"></div>
+      <div class="field"><label>Data Pagamento</label><input type="date" id="f-data-pagamento"></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="f-note" placeholder="Dettagli aggiuntivi, numero preventivo…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn secondary-cancel" onclick="closeModal()">Annulla</button>
+      <button class="btn primary" onclick="saveEntry()">Salva spesa</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../js/shared.js"></script>
+<script src="../js/spese.js"></script>
+</body>
+</html>
